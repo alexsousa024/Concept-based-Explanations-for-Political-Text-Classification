@@ -1,0 +1,222 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[a4paper,margin=2.7cm]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage[round,authoryear]{natbib}
+
+\hypersetup{pdftitle={Evolução temporal do debate parlamentar português},pdfauthor={A preencher}}
+\title{Evolução temporal do debate parlamentar português\\\large Documento de trabalho metodológico}
+\author{[Nome do autor]\\[0.25em][Mestrado / Programa]\\[Instituição]}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este documento regista, de forma cumulativa e auditável, as decisões metodológicas de um estudo sobre a evolução temática do debate na Assembleia da República portuguesa. A investigação usa o corpus ParlaMint-PT e prepara intervenções parlamentares para uma análise temporal de tópicos baseada em embeddings e no enquadramento BERTilda. Esta versão consolida o problema de investigação, a revisão de literatura essencial, a proveniência e o pré-processamento dos dados e a análise exploratória que antecede a modelação. As decisões ainda não validadas empiricamente são identificadas explicitamente como provisórias.
+\end{abstract}
+
+\noindent\textbf{Palavras-chave:} debate parlamentar; modelação de tópicos; evolução temporal; embeddings; ParlaMint; BERTilda.
+
+\tableofcontents
+\newpage
+
+\section{Introdução}
+
+Os registos parlamentares permitem estudar, em grande escala, a atenção política, a competição entre partidos e a organização do debate ao longo do tempo. Porém, a frequência de palavras não é uma medida suficiente da estrutura temática: termos diferentes podem remeter para o mesmo problema político e um mesmo termo pode mudar de enquadramento. O objetivo desta investigação é caracterizar e seguir a evolução de temas no debate parlamentar português, preservando a unidade empírica da intervenção e usando a dimensão temporal para comparar tópicos entre períodos.
+
+O corpus de partida é o ParlaMint-PT, parte da família ParlaMint de corpora parlamentares comparáveis e codificados em TEI. Estes recursos combinam transcrições com metadados sobre sessões, pessoas oradoras, partidos e outras propriedades institucionais \citep{erjavec2023parlamint}. A disponibilidade simultânea de texto e metadados permite que a análise seja interpretada à luz de mudanças de governo, composição partidária e ritmo parlamentar.
+
+O problema metodológico central não é apenas descobrir tópicos em cada período. É determinar quando dois tópicos observados em períodos adjacentes representam continuidade, quando um tópico se divide ou converge com outro e quando a aparente mudança decorre de baixa atividade ou de composição desequilibrada do corpus. O enquadramento BERTilda trata precisamente esta tarefa como alinhamento entre tópicos de janelas adjacentes e classificação explícita de eventos de ciclo de vida \citep{oliveirafigueira2026bertilda}.
+
+\subsection{Questões de investigação}
+
+\begin{enumerate}[label=\textbf{Q\arabic*.}]
+  \item Como evolui a atenção temática no debate parlamentar português entre 2015 e março de 2024?
+  \item Que continuidades, aparecimentos, desaparecimentos, divisões e convergências temáticas podem ser identificados entre períodos consecutivos?
+  \item Em que medida a interpretação dessa evolução depende da composição partidária, do estatuto das pessoas oradoras e da cadência parlamentar?
+  \item Que granularidade temporal oferece comparações interpretáveis sem confundir recessos e alterações do ritmo parlamentar com mudança temática?
+\end{enumerate}
+
+As questões Q1--Q3 definem o objetivo substantivo. A Q4 é instrumental: uma janela temporal não altera a construção dos embeddings por intervenção, mas condiciona a descoberta e o alinhamento de tópicos feitos depois.
+
+\section{Revisão de literatura}
+
+\subsection{Corpora parlamentares e análise computacional do discurso}
+
+Os debates parlamentares são fontes particularmente úteis para análise computacional porque combinam continuidade temporal, registo institucional e metadados sociopolíticos. O projeto ParlaMint uniformiza recursos parlamentares de vários países, organiza-os em TEI e disponibiliza formatos derivados para análise, reduzindo barreiras de reutilização e comparação \citep{erjavec2023parlamint}. Esta infraestrutura não elimina problemas de cobertura, de transcrição ou de classificação, mas permite tornar explícita a proveniência das variáveis usadas.
+
+O estudo de \citet{roswevers2025epistemic} ilustra o potencial de uma abordagem temporal e estrutural. Os autores modelam debates da câmara baixa neerlandesa, constroem redes de associação entre tópicos em períodos semestrais e estudam a especialização discursiva através de densidade, modularidade e comunidades. O seu desenho não é um modelo a copiar diretamente: usa LDA, PMI e Louvain, enquanto este projeto prevê um método baseado em embeddings. Ainda assim, mostra que a granularidade deve ser justificada pelo ritmo institucional e que resultados temporais exigem interpretação substantiva.
+
+\subsection{De modelos probabilísticos a tópicos baseados em embeddings}
+
+O modelo LDA representa documentos como misturas de tópicos e tópicos como distribuições sobre palavras \citep{blei2003lda}. As extensões dinâmicas, como o Dynamic Topic Model, introduzem dependência temporal nas distribuições temáticas \citep{bleilafferty2006dtm}; modelos mais recentes, como o Dynamic Embedded Topic Model, evoluem representações em espaços de embeddings \citep{dieng2019detm}. Estas abordagens são úteis quando se pretende impor uma trajetória temporal suave, mas essa imposição pode ocultar mudanças abruptas ou tornar menos auditável a identificação de divisões e convergências.
+
+Em contraste, a modelação de tópicos baseada em embeddings pode descobrir tópicos independentemente em cada período e só depois estabelecer correspondências temporais. BERTopic combina embeddings de documentos, agrupamento e uma variante class-based TF--IDF para obter representações interpretáveis dos tópicos \citep{grootendorst2022bertopic}. BERTilda usa esta lógica de descoberta por instantâneos, constrói um grafo temporal entre tópicos de janelas adjacentes e combina similaridade semântica com cobertura bidirecional de documentos para rotular continuidades, divisões, convergências, desaparecimentos e relações ambíguas \citep{oliveirafigueira2026bertilda}.
+
+\subsection{Embeddings de intervenções}
+
+Modelos Transformer contextualizam a representação de uma palavra pelo seu contexto \citep{devlin2019bert}. Para comparação semântica e agrupamento, são frequentes representações de frase ou documento que possam ser comparadas no espaço vetorial; Sentence-BERT foi proposto precisamente para produzir embeddings comparáveis eficientemente por similaridade \citep{reimersgurevych2019sbert}. O presente projeto iniciou um piloto com \textit{neuralmind/bert-base-portuguese-cased} (BERTimbau), um modelo pré-treinado para português brasileiro \citep{souza2020bertimbau}, e mean pooling normalizado.
+
+Esta última escolha é uma \emph{configuração experimental}, não uma conclusão: BERTimbau com mean pooling não é automaticamente um codificador Sentence-BERT afinado para similaridade. A adequação ao português europeu, à linguagem parlamentar e à tarefa de agrupamento terá de ser avaliada contra alternativas e por inspeção humana das relações temáticas. Esta ressalva evita transformar conveniência computacional em justificação científica.
+
+\subsection{Avaliação e interpretabilidade}
+
+A qualidade de um modelo de tópicos não pode ser deduzida apenas de uma métrica automática. Medidas de coerência são úteis, mas podem divergir de julgamentos humanos \citep{chang2009reading,newman2010automatic}. Para uma análise temporal, acrescentam-se perguntas próprias: se as relações entre períodos são estáveis, se os eventos de ciclo de vida são plausíveis e se a interpretação resiste à inspeção de documentos. BERTilda propõe combinar diagnósticos quantitativos de qualidade e estabilidade com validação humana de relações temporais \citep{oliveirafigueira2026bertilda}. Esta investigação adotará o mesmo princípio: métricas para triagem e comparação, e amostras rastreáveis de intervenções para validar interpretações.
+
+\section{Dados e pré-processamento}
+
+\subsection{Fonte, unidade de análise e âmbito temporal}
+
+A unidade de análise é a intervenção parlamentar, não uma data nem uma janela temporal. Cada linha liga um identificador de intervenção ao seu texto, data, sessão e metadados da pessoa oradora e da afiliação política. O corpus final cobre 7 de janeiro de 2015 a 13 de março de 2024. Assim, 2024 é um ano incompleto e não deve ser comparado diretamente com anos completos.
+
+Foram usados os ficheiros tabulares derivados do ParlaMint-PT para juntar texto e metadados. A estrutura TEI foi também usada para consultar afiliações institucionais de pessoas oradoras, em particular mandatos parlamentares e funções no Governo. Esta combinação preserva a tabela de análise enquanto permite verificar classificações temporais.
+
+\subsection{Filtragem institucional e integração}
+
+\begin{enumerate}
+  \item Foram carregados os ficheiros \texttt{*-meta.tsv} e convertida a variável \texttt{Date}; o ano foi derivado da data.
+  \item A coluna \texttt{Agenda} foi retirada por não contribuir para o objetivo atual. Foram também retiradas \texttt{Body} e \texttt{Lang}, esta última sem variação útil no corpus.
+  \item Foram excluídas intervenções com \texttt{Speaker\_role = Convidado}. Posteriormente, foram excluídas intervenções da presidência e da Mesa (\texttt{Presidente de mesa} e \texttt{Mesa}). Esta decisão reduz texto procedimental, mas não garante a eliminação de todo o discurso procedimental.
+  \item Os textos foram lidos dos ficheiros correspondentes \texttt{.txt} e unidos aos metadados pelo identificador \texttt{ID}, com verificação de unicidade e de ausência de textos em falta.
+  \item \texttt{Party\_status} foi renomeada para \texttt{bloco\_politico}; \texttt{Coalition} foi mapeada para Governo e \texttt{Opposition} para Oposição. O rótulo descreve posição formal relativamente ao executivo, não apoio parlamentar.
+\end{enumerate}
+
+O registo histórico do notebook indica 248\,573 intervenções antes da filtragem de presidência/Mesa e 179\,711 após essa filtragem. Este último é o ponto de partida do processamento textual.
+
+\subsection{Duas representações textuais}
+
+Foram criadas duas versões alinhadas pelos mesmos identificadores e metadados. A separação evita aplicar ao modelo contextual uma normalização pensada apenas para descritores lexicais.
+
+\begin{longtable}{p{0.22\linewidth}p{0.34\linewidth}p{0.36\linewidth}}
+\toprule
+Representação & Transformações & Uso previsto \\
+\midrule
+\endhead
+\texttt{texto\_embeddings} & Remove apenas marcas editoriais delimitadas por \texttt{[[...]]} e normaliza espaços. Preserva maiúsculas, acentos, pontuação e números. & Embeddings contextuais e experiências de agrupamento. \\
+\addlinespace
+\texttt{texto\_lexical} & Minúsculas, tokenização e lematização com \texttt{pt\_core\_news\_sm}; remove pontuação, stopwords e termos procedimentais provisórios. Preserva números e as negações \emph{não}, \emph{nem}, \emph{nunca}, \emph{jamais} e \emph{sem}. & Descritores, inspeção lexical e comparação exploratória com a versão contextual. \\
+\bottomrule
+\end{longtable}
+
+O processamento lexical usa spaCy \citep{honnibal2020spacy}. A lista de termos procedimentais inclui formas de tratamento, referências à presidência e marcas de interação, por exemplo \emph{senhor}, \emph{deputada}, \emph{aplausos} e \emph{protestos}. A lista é deliberadamente provisória: a frequência de uma palavra não demonstra que ela seja procedural, e remover termos sem inspeção de contexto pode eliminar conteúdo político substantivo.
+
+Antes da lematização, foram excluídas intervenções com menos de dez palavras no texto minimamente limpo. Das 179\,711 intervenções de entrada, 60\,298 (33,6\%) foram removidas por este limiar, ficando 119\,413. Dezasseis intervenções sem tokens lexicais após a normalização foram retiradas de ambas as versões para manter os identificadores alinhados. Cada corpus final contém, por isso, 119\,397 intervenções.
+
+\subsection{Registo do piloto de embeddings}
+
+Foi executado um piloto nos anos 2015--2017, com 36\,258 intervenções por versão textual. A configuração usou BERTimbau cased, comprimento máximo de 512 tokens, mean pooling, normalização L2, lotes de quatro documentos em MPS e ficheiros de saída em blocos de 512 intervenções. Cada execução inclui uma assinatura SHA-256 dos identificadores, textos e parâmetros, para impedir a mistura silenciosa de corpus ou configurações.
+
+Este piloto demonstra viabilidade técnica e reprodutibilidade de armazenamento; não constitui ainda uma avaliação da qualidade semântica dos embeddings nem uma seleção definitiva de representação textual ou modelo.
+
+\section{Análise exploratória de dados}
+
+\subsection{Objetivo e princípios}
+
+A análise exploratória antecede a modelação para identificar assimetrias de volume, composição e atividade que possam enviesar a leitura de tópicos. Não serve para escolher uma janela temporal antes de construir embeddings: os embeddings são produzidos ao nível da intervenção. A dimensão temporal é um diagnóstico adicional para a descoberta e comparação de tópicos posterior.
+
+\subsection{Perfil do corpus final}
+
+\begin{table}[htbp]
+\centering
+\caption{Perfil do corpus lexical usado no EDA.}
+\label{tab:perfil-corpus}
+\begin{tabular}{lr}
+\toprule
+Indicador & Valor \\
+\midrule
+Intervenções & 119\,397 \\
+Período & 2015-01-07 a 2024-03-13 \\
+Intervenções classificadas como Oposição & 82\,707 \\
+Intervenções classificadas como Governo & 35\,012 \\
+Intervenções sem rótulo Governo/Oposição & 1\,678 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+O volume anual não é uniforme. Em particular, 2023 contém 23\,731 intervenções, enquanto 2024 contém apenas 1\,478 por terminar em março. As diferenças de volume não devem ser interpretadas automaticamente como diferenças de saliência temática: podem refletir calendário parlamentar, duração das sessões, procedimentos ou cobertura.
+
+\subsection{Pessoas oradoras e estatuto institucional}
+
+O EDA cruza \texttt{Speaker\_MP} com a lista TEI de pessoas e períodos de afiliação ao Governo. Isto permite distinguir, para cada intervenção rotulada como Governo ou Oposição, deputadas/deputados, membros do Governo e outros não deputados. A distinção é temporal: uma mesma pessoa pode ser deputada num momento e exercer função governativa noutro. Por isso, não se infere o estatuto numa intervenção apenas a partir de uma biografia agregada.
+
+A classificação Governo/Oposição é especialmente útil para contextualizar resultados, mas não deve ser confundida com identidade partidária. Um partido pode mudar de posição formal entre governos; análises por partido e por bloco político respondem, portanto, a perguntas diferentes.
+
+\subsection{Composição partidária e concentração}
+
+No corpus final, PS e PSD concentram o maior número de intervenções, seguidos por PCP, CDS-PP e BE. CH, IL e Livre têm presença concentrada nos anos mais recentes, de acordo com a sua entrada ou representação parlamentar. Há ainda partidos e independentes com baixo volume, para os quais médias de extensão ou tópicos específicos podem ser instáveis.
+
+Esta assimetria tem uma consequência direta: tópicos globais tendem a refletir desproporcionalmente o texto dos grupos com maior produção. A análise posterior deverá reportar cobertura por partido e usar limiares explícitos quando interpretar resultados desagregados. Não se deve concluir que a ausência de um tópico num partido com pouca atividade equivale a ausência de posição política.
+
+\subsection{Atividade temporal, composição e sazonalidade}
+
+Foram descritas séries semanais, quinzenais e mensais de intervenções, palavras e extensão textual. A série semanal tem variabilidade elevada; períodos sem intervenções refletem recessos ou interrupções parlamentares, e não documentos sem texto. A agregação mensal suaviza essa variação, mas esta observação não escolhe, por si só, a janela de modelação.
+
+Para tornar a comparabilidade mensurável, foram calculados por período observado: intervenções, palavras, dias ativos, número e número efetivo de pessoas oradoras e partidos, HHI, quota dos cinco oradores/partidos mais ativos e proporção Governo/Oposição. O número efetivo de categorias é definido por
+\[
+N_{\mathrm{efetivo}} = \frac{1}{\sum_i p_i^2},
+\]
+e o HHI por $\sum_i p_i^2$. Estas medidas descrevem concentração e diversidade; não medem qualidade temática. A sua função é sinalizar períodos onde uma comparação posterior pode estar dominada por poucas pessoas ou partidos.
+
+Por fim, a sazonalidade agrega todos os anos por mês do calendário e mostra intervenções e dias ativos. Esta análise identifica o ritmo parlamentar, mas os meses posteriores a março ficam subcontados por causa da cobertura parcial de 2024. Uma versão comparável da sazonalidade deverá, numa revisão futura, normalizar por número de anos observados por mês.
+
+\section{Método previsto e decisões em aberto}
+
+\subsection{Pipeline analítico previsto}
+
+\begin{enumerate}
+  \item gerar embeddings por intervenção para uma ou mais representações textuais;
+  \item descobrir tópicos independentemente em cada janela temporal, mantendo uma configuração comparável;
+  \item representar tópicos e ligar tópicos de janelas adjacentes por similaridade semântica e cobertura bidirecional;
+  \item construir um grafo temporal e classificar relações como continuidade, aparecimento, desaparecimento, divisão, convergência ou ambiguidade;
+  \item avaliar tópicos e relações através de métricas, amostras de intervenções e validação humana.
+\end{enumerate}
+
+As janelas serão aplicadas apenas a partir do passo 2. A escolha entre semana, quinzena, mês, semestre ou outra granularidade deve ser sustentada pela atividade observada, diversidade de participantes, interpretabilidade dos tópicos e estabilidade das relações, não apenas pelo número médio de documentos.
+
+\subsection{Decisões a validar antes de resultados substantivos}
+
+\begin{longtable}{p{0.31\linewidth}p{0.27\linewidth}p{0.32\linewidth}}
+\toprule
+Decisão & Estado atual & Evidência necessária \\
+\midrule
+\endhead
+Representação textual contextual versus lexical & Em comparação & Qualidade e diversidade dos tópicos; inspeção de amostras; impacto nas relações temporais. \\
+\addlinespace
+Modelo de embeddings & Piloto com BERTimbau + mean pooling & Comparação com modelo afinado para similaridade ou alternativa adequada ao português europeu; validação humana de vizinhos semânticos. \\
+\addlinespace
+Granularidade temporal & Sem decisão final & Atividade, concentração, composição, coerência e estabilidade de relações por janela. \\
+\addlinespace
+Parâmetros de agrupamento / BERTopic & Não fixados & Sensibilidade a hiperparâmetros, proporção de ruído, coerência e auditabilidade. \\
+\addlinespace
+Limiar e regras de relações temporais & Não fixados & Precisão em amostra anotada e análise de casos limítrofes. \\
+\bottomrule
+\end{longtable}
+
+\section{Limitações conhecidas}
+
+O estudo cobre texto parlamentar, não a totalidade da atividade política. A filtragem de presidência e Mesa reduz ruído procedimental, mas não remove necessariamente todos os atos procedimentais. A lematização e a lista de termos removidos podem introduzir erros, sobretudo por o modelo linguístico e BERTimbau terem sido desenvolvidos predominantemente para português brasileiro. Finalmente, a representação de Governo/Oposição é institucional e temporal, mas não mede ideologia, disciplina de voto ou apoio parlamentar informal.
+
+Estas limitações não invalidam a análise; delimitam as inferências aceitáveis e definem testes de robustez para as próximas versões.
+
+\section{Próximos passos}
+
+\begin{enumerate}
+  \item Rever manualmente a lista de termos procedimentais e uma amostra de lemas em português europeu.
+  \item Comparar embeddings contextuais e lexicais com uma tarefa de vizinhança semântica e inspeção humana.
+  \item Definir uma grelha de experiências temporalmente comparável, variando uma dimensão de cada vez.
+  \item Estabelecer critérios de avaliação de tópicos e de relações temporais antes de interpretar resultados políticos.
+  \item Exportar figuras e tabelas do EDA para inclusão nesta secção, com legendas que indiquem cobertura temporal e filtros aplicados.
+\end{enumerate}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+\end{document}
